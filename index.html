@@ -11,6 +11,7 @@
     <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
     <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button>
     <button id="append_button" onclick="handleAppend()">Append</button>
+    <button id="append_button" onclick="addWorksheet()">getsheet</button>
 
     <pre id="content" style="white-space: pre-wrap;"></pre>
 
@@ -37,6 +38,7 @@
 
       document.getElementById('authorize_button').style.visibility = 'hidden';
       document.getElementById('signout_button').style.visibility = 'hidden';
+      document.getElementById('append_button').style.visibility = 'hidden';
 
       /**
        * Callback after api.js is loaded.
@@ -77,6 +79,7 @@
       function maybeEnableButtons() {
         if (gapiInited && gisInited) {
           document.getElementById('authorize_button').style.visibility = 'visible';
+          document.getElementById('append_button').style.visibility = 'visible';
         }
       }
 
@@ -117,16 +120,12 @@
         }
       }
 
-      /**
-       * Print the names and majors of students in a sample spreadsheet:
-       * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-       */
       async function listMajors() {
         let response;
         try {
           response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: '1-1wGe9QFO1irMtbYeR60LXBudFj1FIEGzVe7VMC4N1Y',
-            range: 'A2:B',
+            range: 'A1:B',
           });
         } catch (err) {
           document.getElementById('content').innerText = err.message;
@@ -150,9 +149,9 @@
         try {
           response = await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: '1-1wGe9QFO1irMtbYeR60LXBudFj1FIEGzVe7VMC4N1Y',
-            range: 'A2:B',
+            range: 'A1:B',
             valueInputOption: 'RAW',
-            values: [['超派鐵拳', '93999']]
+            values: [['2/19超派鐵拳', '93999']]
           });
         } catch (err) {
           document.getElementById('content').innerText = err.message;
@@ -162,24 +161,52 @@
         console.log('新增一筆response', range);
       }
 
-    async function handleAppend() {
-      tokenClient.callback = async (resp) => {
-          if (resp.error !== undefined) {
-            throw (resp);
-          }
-          await appendData();
-          await listMajors();
-        };
+      async function addWorksheet() {
+        let response;
+        try {
+          response = await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: '1-1wGe9QFO1irMtbYeR60LXBudFj1FIEGzVe7VMC4N1Y',
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: '我拿你沒輒'
+                }
+              },
+            }],
+          });
+          console.log(response);
+          const title = response.result.replies[0].addSheet.properties.title;
+          await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: '1-1wGe9QFO1irMtbYeR60LXBudFj1FIEGzVe7VMC4N1Y',
+            range: `${title}!A1:C`,
+            valueInputOption: 'RAW',
+            values: [['姓名', '評分', '備註'],['2/19超派鐵拳', '93999', '無法解釋'], ['2/19糾派鐵拳', '23432'], ['2/19鐵拳', '94539'], ['2/191不派鐵拳', '0483']]
+          });
+        } catch (err) {
+          console.log(err);
+          document.getElementById('content').innerText = err.message;
+          return;
+        }
+      }
 
-        if (gapi.client.getToken() === null) {
-          // Prompt the user to select a Google Account and ask for consent to share their data
-          // when establishing a new session.
-          tokenClient.requestAccessToken({prompt: 'consent'});
-        } else {
-          // Skip display of account chooser and consent dialog for an existing session.
-          tokenClient.requestAccessToken({prompt: ''});
-      } 
-    }
+      async function handleAppend() {
+        tokenClient.callback = async (resp) => {
+            if (resp.error !== undefined) {
+              throw (resp);
+            }
+            await appendData();
+            await listMajors();
+          };
+
+          if (gapi.client.getToken() === null) {
+            // Prompt the user to select a Google Account and ask for consent to share their data
+            // when establishing a new session.
+            tokenClient.requestAccessToken({prompt: 'consent'});
+          } else {
+            // Skip display of account chooser and consent dialog for an existing session.
+            tokenClient.requestAccessToken({prompt: ''});
+        } 
+      }
     </script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
